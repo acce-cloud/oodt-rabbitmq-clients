@@ -31,7 +31,7 @@ LOGGER = logging.getLogger(__name__)
 class RabbitmqConsumer(threading.Thread):
     """This is an example consumer that will handle unexpected interactions
     with RabbitMQ such as channel and connection closures.
-    
+
     Initially, the consumer will attempt to connect indefinitely, waiting a certain
     time in between connection attempts.
 
@@ -44,32 +44,33 @@ class RabbitmqConsumer(threading.Thread):
     commands that were issued and that should surface in the output as well.
 
     """
-    
+
     EXCHANGE = 'oodt-exchange'
     EXCHANGE_TYPE = 'direct'
-    PREFETCH_COUNT = 1 # number of concurrent messages to be sent to this consumer
-        
+    PREFETCH_COUNT = 1  # number of concurrent messages to be sent to this consumer
+
     def __init__(self, amqp_url, workflow_event, wmgrClient,
-                 group=None, target=None, name=None, verbose=None): # Thread parent class arguments
+                 group=None, target=None, name=None, verbose=None):  # Thread parent class arguments
         """Create a new instance of the consumer class, passing in the AMQP
         URL used to connect to RabbitMQ.
 
         :param str amqp_url: The AMQP url to connect with
 
         """
-        
+
         # initialize Thread
-        threading.Thread.__init__(self, group=group, target=target, name=name, verbose=verbose)
-                
+        threading.Thread.__init__(
+            self, group=group, target=target, name=name, verbose=verbose)
+
         self._wmgrClient = wmgrClient
         self._connection = None
         self._channel = None
         self._closing = False
         self._consumer_tag = None
-        self._url = amqp_url        
+        self._url = amqp_url
         self._queue = workflow_event
         self._routing_key = workflow_event
-        
+
     def connect(self):
         """This method connects to RabbitMQ, returning the connection handle.
         When the connection is established, the on_connection_open method
@@ -78,21 +79,21 @@ class RabbitmqConsumer(threading.Thread):
         :rtype: pika.SelectConnection
 
         """
-        
+
         # try to connect indefinitely, until successful
         while True:
-            
+
             try:
                 LOGGER.info('Connecting to %s', self._url)
                 return pika.SelectConnection(pika.URLParameters(self._url),
                                              self.on_connection_open,
                                              stop_ioloop_on_close=False)
             except Exception as e:
-                
-                LOGGER.warn("Could not connect, waiting before trying again...")
+
+                LOGGER.warn(
+                    "Could not connect, waiting before trying again...")
                 LOGGER.warn(e)
                 time.sleep(5)
-                
 
     def on_connection_open(self, unused_connection):
         """This method is called by pika once the connection to RabbitMQ has
@@ -230,7 +231,8 @@ class RabbitmqConsumer(threading.Thread):
 
         """
         LOGGER.info('Declaring queue %s', queue_name)
-        self._channel.queue_declare(self.on_queue_declareok, queue=queue_name, durable=True)
+        self._channel.queue_declare(
+            self.on_queue_declareok, queue=queue_name, durable=True)
 
     def on_queue_declareok(self, method_frame):
         """Method invoked by pika when the Queue.Declare RPC call made in
@@ -310,19 +312,18 @@ class RabbitmqConsumer(threading.Thread):
         """
         LOGGER.info('Received message # %s from producer %s: %s, submitting workflow...',
                     basic_deliver.delivery_tag, properties.app_id, body)
-                
+
         # parse message body into metadata dictionary
         metadata = json.loads(body)
-                
+
         # submit workflow, then block to wait for its completion
         # IMPORTANT: message will not be acknowledged until the workflow is completed
         # so next message will not be sent until then
-        status = self._wmgrClient.executeWorkflow(metadata)      
+        status = self._wmgrClient.executeWorkflow(metadata)
         logging.info('Worfklow ended with status: %s' % status)
-        
+
         # send acknowledgment to RabbitMQ server
         self.acknowledge_message(basic_deliver.delivery_tag)
-
 
     def acknowledge_message(self, delivery_tag):
         """Acknowledge the message delivery from RabbitMQ by sending a
@@ -395,19 +396,20 @@ class RabbitmqConsumer(threading.Thread):
 
 
 def main(workflow_event, num_workflow_clients):
-    
+
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
-    
+
     # RABBITMQ_USER_URL (defaults to guest/guest @ localhost)
-    rabbitmqUrl = os.environ.get('RABBITMQ_USER_URL', 'amqp://guest:guest@localhost/%2f')
-    
+    rabbitmqUrl = os.environ.get(
+        'RABBITMQ_USER_URL', 'amqp://guest:guest@localhost/%2f')
+
     # list of all consumers to wait for
     rmqConsumers = []
-    
+
     # instantiate and start all RabbitMQ consumers
     # the consumer threads would normally never terminate
     for i in range(num_workflow_clients):
-        
+
         # instantiate Workflow Manager client
         # IMPORTANT: xmlrpclib is NOT thread safe in Python 2.7
         # so must create one WorkflowManagerClient to be used in each thread
@@ -415,29 +417,32 @@ def main(workflow_event, num_workflow_clients):
 
         # instantiate RabbitMQ client instance
         rmqConsumer = RabbitmqConsumer(rabbitmqUrl, workflow_event, wmgrClient)
-        rmqConsumer.setDaemon(True) # use daemon Threads so that main program does not block
+        # use daemon Threads so that main program does not block
+        rmqConsumer.setDaemon(True)
         rmqConsumers.append(rmqConsumer)
 
         # Thread.start() --> rmqConsumer.run()
         rmqConsumer.start()
-        
+
     # wait forever (since each consumer listens indefinitely)
     try:
-        while True: time.sleep(100)
-        
+        while True:
+            time.sleep(100)
+
     # but stop if ^C is issued
     except (KeyboardInterrupt, SystemExit):
-                
-        for rmqConsumer in rmqConsumers:   
+
+        for rmqConsumer in rmqConsumers:
             LOGGER.info('Stopping consumer: %s' % rmqConsumer)
             rmqConsumer.stop()
-            
+
 
 if __name__ == '__main__':
-    
+
     # parse command line argument
     if len(sys.argv) < 3:
-        raise Exception("Usage: python rabbitmq_consumer.py <workflow_event> <number_of_concurrent_workflows_per_engine>")
+        raise Exception(
+            "Usage: python rabbitmq_consumer.py <workflow_event> <number_of_concurrent_workflows_per_engine>")
     else:
         workflow_event = sys.argv[1]
         num_workflow_clients = int(sys.argv[2])

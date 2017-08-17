@@ -2,11 +2,11 @@
 # Adapted from: http://pika.readthedocs.io/en/0.10.0/examples/asynchronous_publisher_example.html
 #
 # Features:
-# o Requests delivery confirmation from RabbitMQ server 
+# o Requests delivery confirmation from RabbitMQ server
 #   and keeps tracks of which messages have been acknowledged or not acknowledged
 # o Reconnects if connection to RabbitMQ servers goes down for any reason
 # o Shuts down if RabbitMQ server closes the channel
-# 
+#
 # Connection parameters are specified through the environmental variables:
 # o RABBITMQ_USER_URL (to send messages)
 # o RABBITMQ_ADMIN_URL (to monitor message delivery)
@@ -27,7 +27,7 @@ import uuid
 #LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) -35s %(lineno) -5d: %(message)s')
 LOG_FORMAT = '%(levelname)s: %(message)s'
 LOGGER = logging.getLogger(__name__)
-LOG_FILE = "rabbitmq_producer.log" # in current directory
+LOG_FILE = "rabbitmq_producer.log"  # in current directory
 
 
 class RabbitmqProducer(object):
@@ -43,11 +43,10 @@ class RabbitmqProducer(object):
     messages that have been sent and if they've been confirmed by RabbitMQ.
 
     """
-    EXCHANGE = 'oodt-exchange' 
+    EXCHANGE = 'oodt-exchange'
     EXCHANGE_TYPE = 'direct'
     PUBLISH_INTERVAL = 0.1
-    PRODUCER_ID = str(uuid.uuid4()) # unique producer identifer
-    
+    PRODUCER_ID = str(uuid.uuid4())  # unique producer identifer
 
     def __init__(self, amqp_url, workflow_event, num_messages, msg_dict):
         """Setup the example publisher object, passing in the URL we will use
@@ -69,7 +68,6 @@ class RabbitmqProducer(object):
         self._routing_key = workflow_event
         self._num_messages = num_messages
         self._msg_dict = msg_dict
-
 
     def connect(self):
         """This method connects to RabbitMQ, returning the connection handle.
@@ -203,7 +201,7 @@ class RabbitmqProducer(object):
         self._channel.exchange_declare(callback=self.on_exchange_declareok,
                                        exchange=exchange_name,
                                        exchange_type=self.EXCHANGE_TYPE,
-                                       durable=True) # survive server reboots
+                                       durable=True)  # survive server reboots
 
     def on_exchange_declareok(self, unused_frame):
         """Invoked by pika when RabbitMQ has finished the Exchange.Declare RPC
@@ -224,7 +222,9 @@ class RabbitmqProducer(object):
 
         """
         LOGGER.info('Declaring queue %s', queue_name)
-        self._channel.queue_declare(self.on_queue_declareok, queue=queue_name, durable=True) # make queue persist server reboots
+        # make queue persist server reboots
+        self._channel.queue_declare(
+            self.on_queue_declareok, queue=queue_name, durable=True)
 
     def on_queue_declareok(self, method_frame):
         """Method invoked by pika when the Queue.Declare RPC call made in
@@ -256,7 +256,6 @@ class RabbitmqProducer(object):
         LOGGER.info('Issuing consumer related RPC commands')
         self.enable_delivery_confirmations()
         self.schedule_next_message()
-        
 
     def enable_delivery_confirmations(self):
         """Send the Confirm.Select RPC method to RabbitMQ to enable delivery
@@ -298,7 +297,7 @@ class RabbitmqProducer(object):
                     '%i were acked and %i were nacked',
                     self._message_number, len(self._deliveries),
                     self._acked, self._nacked)
-        
+
         # close connection and channel all messages have been delivered successfully
         if self._acked == self._num_messages:
             LOGGER.info("RabbitMQ producer shutting down...")
@@ -333,7 +332,7 @@ class RabbitmqProducer(object):
             return
 
         self._message_number += 1
-                
+
         properties = pika.BasicProperties(app_id=self.PRODUCER_ID,
                                           content_type='application/json',
                                           delivery_mode=2,       # make message persistent
@@ -341,16 +340,17 @@ class RabbitmqProducer(object):
 
         self._channel.basic_publish(self.EXCHANGE, self._routing_key,
                                     # transforms dictionary into string
-                                    json.dumps(self._msg_dict, ensure_ascii=False),
+                                    json.dumps(self._msg_dict,
+                                               ensure_ascii=False),
                                     properties)
-        
+
         self._deliveries.append(self._message_number)
-        LOGGER.critical('Published message to workflow: %s with metadata: %s' % (self._routing_key, self._msg_dict))
-        
+        LOGGER.critical('Published message to workflow: %s with metadata: %s' % (
+            self._routing_key, self._msg_dict))
+
         # stop publishing after num_messages
         if self._message_number < self._num_messages:
             self.schedule_next_message()
-    
 
     def close_channel(self):
         """Invoke this command to close the channel with RabbitMQ by sending
@@ -384,31 +384,33 @@ class RabbitmqProducer(object):
         self._connection.ioloop.start()
         LOGGER.info('Stopped')
 
-
     def close_connection(self):
         """This method closes the connection to RabbitMQ."""
         LOGGER.info('Closing connection')
         self._closing = True
         self._connection.close()
-        
+
+
 def wait_for_queue(queue_name, delay_secs=0):
     '''
     Method that waits until the number of 'ready' messages and 'unacked' messages in a specific queue is 0
     (signaling that all workflows have been completed).
     Use ^C to stop waiting before all messages have been processed.
     '''
-    
-    LOGGER.critical("Waiting for all messages to be processed in queue: %s" % queue_name)
-    time.sleep(delay_secs) # wait for queue to be ready
-            
+
+    LOGGER.critical(
+        "Waiting for all messages to be processed in queue: %s" % queue_name)
+    time.sleep(delay_secs)  # wait for queue to be ready
+
     num_messages = -1
     num_ready_messages = -1
     num_unack_messages = -1
-    
+
     # must connect to RabbitMQ server with administrator privileges
     # RABBITMQ_ADMIN_URL=http://oodt-admin:changeit@localhost:15672
-    url = os.environ.get('RABBITMQ_ADMIN_URL', 'http://guest:guest@localhost:15672') + "/api/queues/%2f/" + queue_name
-    
+    url = os.environ.get(
+        'RABBITMQ_ADMIN_URL', 'http://guest:guest@localhost:15672') + "/api/queues/%2f/" + queue_name
+
     while num_messages != 0:
         try:
             resp = requests.get(url=url)
@@ -416,13 +418,13 @@ def wait_for_queue(queue_name, delay_secs=0):
             num_messages = data['messages']
             num_ready_messages = data['messages_ready']
             num_unack_messages = data['messages_unacknowledged']
-            logging.critical("Number of messages: ready=%s unacked= %s total=%s" % 
+            logging.critical("Number of messages: ready=%s unacked= %s total=%s" %
                              (num_ready_messages, num_unack_messages, num_messages))
-            time.sleep(1) 
+            time.sleep(1)
         except KeyboardInterrupt:
             LOGGER.info("Breaking out of wait mode...")
             break
-        
+
 
 def wait_for_queues(delay_secs=0, sleep_secs=1):
     '''
@@ -430,84 +432,90 @@ def wait_for_queues(delay_secs=0, sleep_secs=1):
     (signaling that all workflows have been completed).
     Use ^C to stop waiting before all messages have been processed.
     '''
-    
+
     start_time = datetime.datetime.now()
-    LOGGER.critical("Waiting for all messages to be processed in all queues...")
-    time.sleep(delay_secs) # wait for queue to be ready
-            
+    LOGGER.critical(
+        "Waiting for all messages to be processed in all queues...")
+    time.sleep(delay_secs)  # wait for queue to be ready
+
     num_messages = -1
     num_ready_messages = -1
     num_unack_messages = -1
-    
+
     # must connect to RabbitMQ server with administrator privileges
     # RABBITMQ_ADMIN_URL=http://oodt-admin:changeit@localhost:15672
-    url = os.environ.get('RABBITMQ_ADMIN_URL', 'http://guest:guest@localhost:15672') + "/api/queues"
-    
+    url = os.environ.get('RABBITMQ_ADMIN_URL',
+                         'http://guest:guest@localhost:15672') + "/api/queues"
+
     # open log file (override existing)
     with open(LOG_FILE, 'w') as log_file:
-      # header line
-      log_file.write('Elapsed time\tQueue\tNumReadyMessages\tNumUnackMessages\tNumMessages\n')
+        # header line
+        log_file.write(
+            'Elapsed time\tQueue\tNumReadyMessages\tNumUnackMessages\tNumMessages\n')
 
-      while num_messages != 0:
-        try:
-            resp = requests.get(url=url)
-            all_data = json.loads(resp.text)
-            this_time = datetime.datetime.now()
-            
-            # loop over queues
-            for queue_data in all_data:
-                queue_name = queue_data['name']
-                num_messages = queue_data['messages_persistent']
-                num_ready_messages = queue_data['messages_ready']
-                num_unack_messages = queue_data['messages_unacknowledged']
-                
-                # write out to log file
-                elapsed_time = (this_time - start_time).total_seconds()
-                logging.critical("Elapsed time=%s queue=%s number of messages: ready=%s unacked= %s total=%s" %
-                                 (elapsed_time, queue_name, num_ready_messages, num_unack_messages, num_messages))
-                log_file.write("%s\t%s\t%s\t%s\t%s\n" % (elapsed_time, queue_name, num_ready_messages, num_unack_messages, num_messages))
+        while num_messages != 0:
+            try:
+                resp = requests.get(url=url)
+                all_data = json.loads(resp.text)
+                this_time = datetime.datetime.now()
 
-                # wait for this queue, skip reamining
-                if num_messages > 0:
-                   time.sleep(sleep_secs)
-                   break # skip remaining queues, query again all queues for updated status
-                
-        except KeyboardInterrupt:
-            LOGGER.info("Breaking out of wait mode...")
-            break
-        
+                # loop over queues
+                for queue_data in all_data:
+                    queue_name = queue_data['name']
+                    num_messages = queue_data['messages_persistent']
+                    num_ready_messages = queue_data['messages_ready']
+                    num_unack_messages = queue_data['messages_unacknowledged']
+
+                    # write out to log file
+                    elapsed_time = (this_time - start_time).total_seconds()
+                    logging.critical("Elapsed time=%s queue=%s number of messages: ready=%s unacked= %s total=%s" %
+                                     (elapsed_time, queue_name, num_ready_messages, num_unack_messages, num_messages))
+                    log_file.write("%s\t%s\t%s\t%s\t%s\n" % (
+                        elapsed_time, queue_name, num_ready_messages, num_unack_messages, num_messages))
+
+                    # wait for this queue, skip reamining
+                    if num_messages > 0:
+                        time.sleep(sleep_secs)
+                        break  # skip remaining queues, query again all queues for updated status
+
+            except KeyboardInterrupt:
+                LOGGER.info("Breaking out of wait mode...")
+                break
+
 
 def publish_messages(msg_queue, num_msgs, msg_dict):
-    
+
     logging.basicConfig(level=logging.CRITICAL, format=LOG_FORMAT)
-        
+
     # RABBITMQ_USER_URL (defaults to guest/guest @ localhost)
     # connect to virtual host "/" (%2F)
-    rabbitmqUrl = os.environ.get('RABBITMQ_USER_URL', 'amqp://guest:guest@localhost/%2f')
+    rabbitmqUrl = os.environ.get(
+        'RABBITMQ_USER_URL', 'amqp://guest:guest@localhost/%2f')
 
     # instantiate producer
-    rmqProducer = RabbitmqProducer(rabbitmqUrl + '?connection_attempts=3&heartbeat_interval=3600', 
-                                        msg_queue, num_msgs, msg_dict)
-    
+    rmqProducer = RabbitmqProducer(rabbitmqUrl + '?connection_attempts=3&heartbeat_interval=3600',
+                                   msg_queue, num_msgs, msg_dict)
+
     # publish N messages
     rmqProducer.run()
-    
+
     # wait for RabbitMQ server to process all messages in given queue
-    #wait(workflow_event)
-                        
+    # wait(workflow_event)
+
 
 if __name__ == '__main__':
     """ Parse command line arguments."""
-    
+
     if len(sys.argv) < 3:
-        raise Exception("Usage: python rabbitmq_producer.py <workflow_event> <number_of_events> [<metadata_key=metadata_value> <metadata_key=metadata_value> ...]")
+        raise Exception(
+            "Usage: python rabbitmq_producer.py <workflow_event> <number_of_events> [<metadata_key=metadata_value> <metadata_key=metadata_value> ...]")
     else:
         workflow_event = sys.argv[1]
-        num_events = int( sys.argv[2] )
+        num_events = int(sys.argv[2])
         # parse remaning arguments into a dictionary
         msg_dict = {}
         for arg in sys.argv[3:]:
             key, val = arg.split('=')
-            msg_dict[key]=val
+            msg_dict[key] = val
 
     publish_messages(workflow_event, num_events, msg_dict)
