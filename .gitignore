@@ -1,0 +1,10 @@
+#**/*.jar
+**/*.war
+**/*.tar
+**/*.tgz
+**/*.swp
+**/target
+**/logs
+**/.met
+**/.out
+**/jobs
