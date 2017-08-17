@@ -11,10 +11,7 @@ import logging
 logging.basicConfig(level=logging.INFO,
                     format='(%(threadName)-10s) %(message)s')
 
-STATUS_SUBMITTED = "Workflow_Submission_OK"
-STATUS_ERROR = "Workflow_Submission_Error"
 STATE_RUNNING = "PGETask_Running"
-
 
 class WorkflowManagerClient(object):
     '''
@@ -74,7 +71,8 @@ class WorkflowManagerClient(object):
                 
             # error in XML/RPC communication
             except Exception as e:
-                logging.warn(e.message)
+                #logging.warn("XML/RPC Error: %s" % e.message)
+                pass
 
             # not ready
             return False
@@ -97,5 +95,5 @@ class WorkflowManagerClient(object):
         # error in XML/RPC communication
         except Exception as e:
             logging.warn("WM client: error submitting workflow %s with metadata %s" % (self.workflow_event, metadata))
-            logging.warn(e.message)
+            logging.warn("WM client: XML/RPC error: %s" % e.message)
             return False # error

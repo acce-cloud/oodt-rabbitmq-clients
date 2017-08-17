@@ -138,7 +138,7 @@ class RabbitmqPullClient(RabbitmqClient):
                 # wait for Workflow Manager to be ready for the next workflow
                 if self.wmgrClient.isReady():
 
-                    logging.debug("Trying to pull next message from queue: %s" % self.queue_name)
+                    logging.info("Trying to pull next message from queue: %s" % self.queue_name)
                     try:
                         # open connection if necessary
                         self.connect()
@@ -150,10 +150,6 @@ class RabbitmqPullClient(RabbitmqClient):
                             logging.info(method_frame)
                             logging.info(header_frame)
                             logging.info(body)
-
-                            # send message acknowledgment
-                            self.channel.basic_ack(method_frame.delivery_tag)
-
 
                             # submit workflow, then block to wait for its completion
                             metadata = json.loads(body)
