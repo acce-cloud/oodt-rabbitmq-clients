@@ -12,7 +12,7 @@ import logging
 import json
 from workflow_client import WorkflowManagerClient
 
-logging.basicConfig(level=logging.INFO,
+logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s %(filename)s %(funcName)s: %(message)s')
 
 
@@ -157,9 +157,7 @@ class RabbitmqPullClient(RabbitmqClient):
                             logging.info("RMQ client: submitting workflow with metadata: %s" % metadata)
                             status = self.wmgrClient.submitWorkflow(metadata)
                             logging.info('RMQ client: worfklow submission status: %s' % status)
-                            self.channel.basic_ack(method_frame.delivery_tag)
                             
-                            '''
                             if status:
                                 # workflow submitted succesfully --> send message acknowledgment
                                 self.channel.basic_ack(method_frame.delivery_tag)
@@ -167,7 +165,6 @@ class RabbitmqPullClient(RabbitmqClient):
                                 # workflow submission resuted in error --> send message rejection
                                 logging.warn("RMQ client: sending NACK for worflow with metadata: %s" % metadata)
                                 self.channel.basic_nack(method_frame.delivery_tag)             
-                            '''
 
                         else:
                             # leave the connection open for the next pull
