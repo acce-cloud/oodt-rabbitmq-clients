@@ -13,7 +13,7 @@ import json
 from workflow_client import WorkflowManagerClient
 
 logging.basicConfig(level=logging.INFO,
-                    format='(%(threadName)-10s) %(message)s')
+                    format='%(levelname)s %(filename)s %(funcName)s: %(message)s')
 
 
 class RabbitmqClient(threading.Thread):
@@ -119,7 +119,7 @@ class RabbitmqPullClient(RabbitmqClient):
     '''
 
     # time interval in seconds before pulling the next message
-    TIME_INTERVAL = 5
+    TIME_INTERVAL = 1
 
     def __init__(self, workflow_event, wmgrClient,
                  group=None, target=None, name=None, verbose=None):
@@ -136,10 +136,10 @@ class RabbitmqPullClient(RabbitmqClient):
             try:  # program terminated
 
                 # wait for Workflow Manager to be ready for the next workflow
-                logging.info("Waiting for WM Client to be ready...")
+                logging.debug("Waiting for WM Client to be ready...")
                 if self.wmgrClient.isReady():
 
-                    logging.info("Trying to pull next message from queue: %s" % self.queue_name)
+                    logging.debug("Trying to pull next message from queue: %s" % self.queue_name)
                     try:
                         # open connection if necessary
                         self.connect()
@@ -147,16 +147,16 @@ class RabbitmqPullClient(RabbitmqClient):
 
                         if method_frame:
 
-                            logging.info("Message found:")
-                            logging.info(method_frame)
-                            logging.info(header_frame)
-                            logging.info(body)
+                            logging.debug("Message found:")
+                            logging.debug(method_frame)
+                            logging.debug(header_frame)
+                            logging.debug(body)
 
                             # submit workflow, then block to wait for its completion
                             metadata = json.loads(body)
                             logging.info("RMQ client: submitting workflow with metadata: %s" % metadata)
                             status = self.wmgrClient.submitWorkflow(metadata)
-                            logging.info('Worfklow submission status: %s' % status)
+                            logging.info('RMQ client: worfklow submission status: %s' % status)
                             self.channel.basic_ack(method_frame.delivery_tag)
                             
                             '''
@@ -173,19 +173,16 @@ class RabbitmqPullClient(RabbitmqClient):
                             # leave the connection open for the next pull
                             logging.debug('No message returned')
                             
-                        # disconnect
-                        #self.disconnect()
-
                     except (pika.exceptions.ConnectionClosed, 
                             pika.exceptions.IncompatibleProtocolError,
                             pika.exceptions.ProbableAuthenticationError) as e:
 
                         # do nothing, wait for next attempt
-                        logging.info("Connection error, will retry...")
+                        logging.debug("Connection error, will retry...")
                         logging.warn(e)
 
                 # wait till next check
-                logging.info("RMQ client waiting...")
+                logging.debug("RMQ client waiting...")
                 time.sleep(self.TIME_INTERVAL)
 
             # but stop if ^C is issued

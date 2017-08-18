@@ -8,9 +8,6 @@ import time
 import threading
 import logging
 
-logging.basicConfig(level=logging.INFO,
-                    format='(%(threadName)-10s) %(message)s')
-
 STATE_RUNNING = "PGETask_Running"
 
 class WorkflowManagerClient(object):
@@ -35,7 +32,7 @@ class WorkflowManagerClient(object):
         self.workflowManagerServerProxy = xmlrpclib.ServerProxy(
             workflowManagerUrl, verbose=verbose)
 
-        logging.info('Workflow event: %s max number of concurrent workflow instances: %s' % (
+        logging.info('WM Client started: Workflow event: %s, max number of concurrent workflow instances: %s' % (
             workflow_event, max_num_running_workflow_instances))
         self.workflow_event = workflow_event
         self.max_num_running_workflow_instances = max_num_running_workflow_instances
@@ -59,14 +56,14 @@ class WorkflowManagerClient(object):
             try:
                 response = self.workflowManagerServerProxy.workflowmgr.getNumWorkflowInstancesByStatus(STATE_RUNNING)
                 self.num_running_workflow_instances = int(response)
-                logging.info("Retrieved number of running workflows = %s" % self.num_running_workflow_instances)
+                logging.debug("Retrieved number of running workflows = %s" % self.num_running_workflow_instances)
                 
             # error in XML/RPC communication
             except Exception as e:
                 logging.warn("WM Client XML/RPC Error: %s" % e)
 
         status = (self.num_running_workflow_instances < self.max_num_running_workflow_instances)
-        logging.info("WM Client is ready = %s" % status)
+        logging.debug("WM Client ready status = %s" % status)
         return status
 
     def submitWorkflow(self, metadata):
