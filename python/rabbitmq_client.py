@@ -136,6 +136,7 @@ class RabbitmqPullClient(RabbitmqClient):
             try:  # program terminated
 
                 # wait for Workflow Manager to be ready for the next workflow
+                logging.info("Waiting for WM Client to be ready...")
                 if self.wmgrClient.isReady():
 
                     logging.info("Trying to pull next message from queue: %s" % self.queue_name)
@@ -156,7 +157,9 @@ class RabbitmqPullClient(RabbitmqClient):
                             logging.info("RMQ client: submitting workflow with metadata: %s" % metadata)
                             status = self.wmgrClient.submitWorkflow(metadata)
                             logging.info('Worfklow submission status: %s' % status)
+                            self.channel.basic_ack(method_frame.delivery_tag)
                             
+                            '''
                             if status:
                                 # workflow submitted succesfully --> send message acknowledgment
                                 self.channel.basic_ack(method_frame.delivery_tag)
@@ -164,28 +167,32 @@ class RabbitmqPullClient(RabbitmqClient):
                                 # workflow submission resuted in error --> send message rejection
                                 logging.warn("RMQ client: sending NACK for worflow with metadata: %s" % metadata)
                                 self.channel.basic_nack(method_frame.delivery_tag)             
+                            '''
 
                         else:
                             # leave the connection open for the next pull
                             logging.debug('No message returned')
                             
                         # disconnect
-                        self.disconnect()
+                        #self.disconnect()
 
-                    except (pika.exceptions.ConnectionClosed, pika.exceptions.ProbableAuthenticationError) as e:
-                        # do nothing, wqit for next attempt
+                    except (pika.exceptions.ConnectionClosed, 
+                            pika.exceptions.IncompatibleProtocolError,
+                            pika.exceptions.ProbableAuthenticationError) as e:
+
+                        # do nothing, wait for next attempt
                         logging.info("Connection error, will retry...")
                         logging.warn(e)
-                        
 
                 # wait till next check
-                logging.debug("RMQ client waiting...")
+                logging.info("RMQ client waiting...")
                 time.sleep(self.TIME_INTERVAL)
 
             # but stop if ^C is issued
             except (KeyboardInterrupt, SystemExit):
                 logging.info("Stopping rabbitmq client...")
                 self.disconnect()
+                break
 
 
 if __name__ == '__main__':

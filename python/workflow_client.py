@@ -43,22 +43,17 @@ class WorkflowManagerClient(object):
         # initialize the number of running workflow instances to 0
         self.num_running_workflow_instances = 0
         
-        # flag to first submit a workflow before executing any querying
-        # (since the first workflow initializes the Lucene index)
-        self.first = True
+        # flag to signify that the first workflow has been succesfully submitted,
+        # so that the Workflow manager Lucene index has been properly initialized
+        # no querying can take place before that
+        self.init = False
 
     def isReady(self):
         '''
         Checks whether the number of workflow instances already running is already greater than the maximum allowed value.
         '''
                 
-        # always submit the first workflow immediately
-        if self.first:
-            self.first = False
-            return True
-        
-        # all other workflow requests
-        else:
+        if self.init:
 
             # try executing XML/RPC query to update the number of running instances
             try:
@@ -66,16 +61,13 @@ class WorkflowManagerClient(object):
                 self.num_running_workflow_instances = int(response)
                 logging.info("Retrieved number of running workflows = %s" % self.num_running_workflow_instances)
                 
-                if self.num_running_workflow_instances < self.max_num_running_workflow_instances:
-                    return True
-                
             # error in XML/RPC communication
             except Exception as e:
-                #logging.warn("XML/RPC Error: %s" % e.message)
-                pass
+                logging.warn("WM Client XML/RPC Error: %s" % e)
 
-            # not ready
-            return False
+        status = (self.num_running_workflow_instances < self.max_num_running_workflow_instances)
+        logging.info("WM Client is ready = %s" % status)
+        return status
 
     def submitWorkflow(self, metadata):
         '''
@@ -89,11 +81,13 @@ class WorkflowManagerClient(object):
             self.workflowManagerServerProxy.workflowmgr.handleEvent(self.workflow_event, metadata)
 
             # workflow succesfully submitted
-            logging.warn("WM client: workflow %s with metadata %s succesfully submitted" % (self.workflow_event, metadata))
+            logging.info("WM client: workflow %s with metadata %s succesfully submitted" % (self.workflow_event, metadata))
+            self.num_running_workflow_instances += 1 # increment counter - prevents pulling too many messages from RMQ server
+            self.init = True # can now query the Workflow Manager for running workflows
             return True # success
 
         # error in XML/RPC communication
         except Exception as e:
             logging.warn("WM client: error submitting workflow %s with metadata %s" % (self.workflow_event, metadata))
-            logging.warn("WM client: XML/RPC error: %s" % e.message)
+            logging.warn("WM client: XML/RPC error: %s" % e)
             return False # error
