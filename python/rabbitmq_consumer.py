@@ -46,7 +46,7 @@ class RabbitmqConsumer(threading.Thread):
         # rabbitmq queue name = OODT workflow event
         self.queue_name = workflow_event
 
-        # connections to the EabbitMQ server
+        # connections to the RabbitMQ server
         self.connection = None
         self.channel = None
 
