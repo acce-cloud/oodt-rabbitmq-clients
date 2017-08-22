@@ -35,6 +35,7 @@ class RabbitmqProducerDaemon(threading.Thread):
         self._producer_id = str(uuid.uuid4())  # unique producer identifier
         self._connection = None
         self._channel = None
+        self._stopped = False # flag to stop the daemon
         
         # connect to the server
         self._connect()
@@ -50,19 +51,19 @@ class RabbitmqProducerDaemon(threading.Thread):
                                        durable=True)  # survive server reboots
 
     
-    # thread main method
     def run(self):
+        '''Daemon method - keeps running until stopped.'''
         
         logging.info("RabbitmqProducerDaemon: starting...")
         
-        while True:
+        while not self._stopped:
             try: 
                 time.sleep(TIME_INTERVAL)
 
-            # program terminated
+            # program terminated by ^C
             except (KeyboardInterrupt, SystemExit):
                 logging.info("RabbitmqProducerDaemon: stopping.")
-                self.disconnect()
+                self._disconnect()
                 break
     
     def publish_message(self, event_name, metadata):
@@ -89,9 +90,15 @@ class RabbitmqProducerDaemon(threading.Thread):
         #self._deliveries.append(self._message_number)
         logging.critical('Published message to workflow: %s with metadata: %s' % (event_name, metadata))
         
+        
+    def stop(self):
+        '''Method to stop the daemon.'''
+        
+        self._stopped = True
         self._disconnect()
         
     def _disconnect(self):
+        '''Closes connection to the RabbitMQ server.'''
         
         if self._connection.is_open:
             self._connection.close()
@@ -106,5 +113,7 @@ if __name__ == '__main__':
     rmqp.start()
     
     rmqp.publish_message(event_name, metadata)
+    rmqp.publish_message(event_name, metadata)
+    rmqp.publish_message(event_name, metadata)
     
-    #rmqp.stop()
+    rmqp.stop()
