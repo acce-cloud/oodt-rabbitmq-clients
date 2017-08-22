@@ -13,7 +13,7 @@ import threading
 import time
 
 # Set up logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 RABBITMQ_USER_URL='amqp://oodt-user:changeit@192.168.99.100/%2f' # FIXME
 EXCHANGE_NAME = 'oodt-exchange'
@@ -30,26 +30,34 @@ class RabbitmqProducerDaemon(threading.Thread):
         # initialize Thread
         threading.Thread.__init__(self, group=group, target=target, name=name, verbose=verbose)
         
-        self._message_number = 0
         self._amqp_url = amqp_url
         self._producer_id = str(uuid.uuid4())  # unique producer identifier
         self._connection = None
         self._channel = None
         self._stopped = False # flag to stop the daemon
         
-        # connect to the server
-        self._connect()
-        
+        self._message_number = 0
+        self._acked = 0
+        self._nacked = 0
+
+                
     def _connect(self):
         '''Opens connection to RabbitMQ server.'''
         
-        self._connection = pika.BlockingConnection(pika.URLParameters(self._amqp_url )) 
-        self._channel = self._connection.channel()
+        if self._connection is None or self._connection.is_closed:
+            
+            logging.info("RabbitmqProducerDaemon: connecting to: %s" % self._amqp_url)
         
-        self._channel.exchange_declare(exchange=EXCHANGE_NAME, 
-                                       type=EXCHANGE_TYPE,
-                                       durable=True)  # survive server reboots
-
+            self._connection = pika.BlockingConnection(pika.URLParameters(self._amqp_url)) 
+            self._channel = self._connection.channel()
+            
+            self._channel.exchange_declare(exchange=EXCHANGE_NAME, 
+                                           type=EXCHANGE_TYPE,
+                                           durable=True)  # survive server reboots
+            
+            # enable delivery confirmation
+            self._channel.confirm_delivery()
+            
     
     def run(self):
         '''Daemon method - keeps running until stopped.'''
@@ -67,13 +75,20 @@ class RabbitmqProducerDaemon(threading.Thread):
                 break
     
     def publish_message(self, event_name, metadata):
+        '''Publishes a single message to a queue.'''
+        
+        if self._stopped:
+            return
+        
+        # re-connect, if necessary
+        self._connect()
                 
         # make queue persist server reboots
         self._channel.queue_declare(queue=event_name, durable=True)
         
         self._channel.queue_bind(exchange=EXCHANGE_NAME,
-                           queue=event_name,
-                           routing_key=event_name)
+                                 queue=event_name,
+                                 routing_key=event_name)
         
         self._message_number += 1
         properties = pika.BasicProperties(app_id=self._producer_id,
@@ -82,17 +97,22 @@ class RabbitmqProducerDaemon(threading.Thread):
                                           headers=metadata)
 
         routing_key = event_name
-        self._channel.basic_publish(EXCHANGE_NAME, routing_key,
+        status = self._channel.basic_publish(EXCHANGE_NAME, routing_key,
                                     # transforms dictionary into string
                                     json.dumps(metadata, ensure_ascii=False),
                                     properties)
-
-        #self._deliveries.append(self._message_number)
-        logging.critical('Published message to workflow: %s with metadata: %s' % (event_name, metadata))
+        if status:
+            self._acked += 1   # message acknowledged
+        else:  
+            self._nacked += 1  # message NOT acknowledged
+        
+        logging.info('Published message to workflow: %s with metadata: %s, acknowledgment status=%s' % (event_name, metadata, status))
         
         
     def stop(self):
         '''Method to stop the daemon.'''
+        
+        logging.info("RabbitmqProducerDaemon: stopping.")
         
         self._stopped = True
         self._disconnect()
@@ -100,8 +120,13 @@ class RabbitmqProducerDaemon(threading.Thread):
     def _disconnect(self):
         '''Closes connection to the RabbitMQ server.'''
         
+        if self._channel:
+            self._channel.close()
+            
         if self._connection.is_open:
             self._connection.close()
+            
+        logging.info("RabbitmqProducerDaemon disconnected.")
                 
 
 if __name__ == '__main__':
