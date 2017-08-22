@@ -32,8 +32,8 @@ class WorkflowManagerClient(object):
         self.workflowManagerServerProxy = xmlrpclib.ServerProxy(
             workflowManagerUrl, verbose=verbose)
 
-        logging.info('WM Client started: Workflow event: %s, max number of concurrent workflow instances: %s' % (
-            workflow_event, max_num_running_workflow_instances))
+        logging.info('WM Client started: connecting to WM server: %s, listening for events of type: %s, max number of concurrent workflow instances: %s' % (
+            workflowManagerUrl, workflow_event, max_num_running_workflow_instances))
         self.workflow_event = workflow_event
         self.max_num_running_workflow_instances = max_num_running_workflow_instances
 

@@ -146,9 +146,10 @@ if __name__ == '__main__':
         max_num_running_workflow_instances = int(sys.argv[2])
 
     # instantiate RabbitMQ client
+    # the collaborating WorkflowClient will contact the Workflow manager at $PROXIED_WORKFLOW_URL, or $WORKFLOW_URL, or http://localhost:9001
     wmgrClient = WorkflowManagerClient(
         workflow_event, 
-        workflowManagerUrl=os.getenv("WORKFLOW_URL"),
+        workflowManagerUrl=os.getenv("PROXIED_WORKFLOW_URL", os.getenv("WORKFLOW_URL", "http://localhost:9001")),
         max_num_running_workflow_instances=max_num_running_workflow_instances)
 
     # instantiate RabbitMQ client

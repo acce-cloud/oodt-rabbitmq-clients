@@ -5,8 +5,10 @@ and sends them to a RabbitMQ server instead,
 for later consumption by RabbitMQ/OODT clients.
 '''
 
-from SimpleXMLRPCServer import SimpleXMLRPCServer, list_public_methods
+from SimpleXMLRPCServer import SimpleXMLRPCServer
+from rabbitmq_producer import publish_messages
 import logging
+
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
@@ -22,7 +24,11 @@ class WorkflowManagerProxy():
         pass
 
     def handleEvent(self, event_name, metadata):
+
         logging.info("WorkflowManagerProxy.handleEvent(): event_name=%s metadata=%s" % (event_name, metadata) )
+
+        # FIXME
+        publish_messages(event_name, 1, metadata)
 
         return True
 
@@ -31,7 +37,6 @@ class WorkflowManagerProxy():
 if __name__ == "__main__":
 
     server = SimpleXMLRPCServer(('localhost', 9001), logRequests=True, allow_none=True)
-    server.register_introspection_functions()
 
     root = ServiceRoot()
     root.workflowmgr = WorkflowManagerProxy()
