@@ -133,6 +133,9 @@ class RabbitmqProducerDaemon(threading.Thread):
         logging.info('Published message to workflow: %s with metadata: %s, acknowledgment status=%s' % (event_name, metadata, status))
         logging.debug('Total number of messages sent=%s, acknowledged=%s, not acknowledged=%s' % (self._message_number, self._acked, self._nacked))
         
+        # return True/False depending on whether the message was accepted or not
+        return status
+        
         
     def stop(self):
         '''Method to stop the daemon.'''

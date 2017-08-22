@@ -11,7 +11,7 @@ import logging
 import json
 from workflow_client import WorkflowManagerClient
 
-logging.basicConfig(level=logging.DEBUG,
+logging.basicConfig(level=logging.INFO,
                     format='%(levelname)s %(filename)s %(funcName)s: %(message)s')
 
 
