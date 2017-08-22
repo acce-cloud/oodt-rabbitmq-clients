@@ -148,7 +148,7 @@ if __name__ == '__main__':
     # instantiate RabbitMQ client
     wmgrClient = WorkflowManagerClient(
         workflow_event, 
-        workflowManagerUrl=sys.getEnv("WORKFLOW_URL"),
+        workflowManagerUrl=os.getenv("WORKFLOW_URL"),
         max_num_running_workflow_instances=max_num_running_workflow_instances)
 
     # instantiate RabbitMQ client
