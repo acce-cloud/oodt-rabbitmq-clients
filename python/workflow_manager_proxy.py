@@ -17,8 +17,8 @@ class WorkflowManagerProxy():
     def __init__(self):
         pass
 
-    def sendEvent(self, event_name, metadata):
-        logging.info("WorkflowManagerProxy.sendEvent(): event_name=%s metadata=%s" % (event_name, metadata) )
+    def handleEvent(self, event_name, metadata):
+        logging.info("WorkflowManagerProxy.handleEvent(): event_name=%s metadata=%s" % (event_name, metadata) )
 
         return True
 
@@ -26,7 +26,7 @@ class WorkflowManagerProxy():
 
 if __name__ == "__main__":
 
-    server = SimpleXMLRPCServer(('localhost', 9000), logRequests=True, allow_none=True)
+    server = SimpleXMLRPCServer(('localhost', 9001), logRequests=True, allow_none=True)
     server.register_instance(WorkflowManagerProxy())
 
     try:
