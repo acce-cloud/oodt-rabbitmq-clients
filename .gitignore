@@ -9,3 +9,5 @@
 **/.out
 **/jobs
 **/*.pyc
+.project
+.pydevproject
