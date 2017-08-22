@@ -130,7 +130,7 @@ class RabbitmqProducerDaemon(threading.Thread):
         else:  
             self._nacked += 1  # message NOT acknowledged
         
-        logging.info('Published message to workflow: %s with metadata: %s, acknowledgment status=%s' % (event_name, metadata, status))
+        logging.info('Published message to RabbitMQ server: workflow event=%s, metadata=%s, acknowledgment status=%s' % (event_name, metadata, status))
         logging.debug('Total number of messages sent=%s, acknowledged=%s, not acknowledged=%s' % (self._message_number, self._acked, self._nacked))
         
         # return True/False depending on whether the message was accepted or not
