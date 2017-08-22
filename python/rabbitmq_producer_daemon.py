@@ -31,14 +31,22 @@ class RabbitmqProducerDaemon(threading.Thread):
         threading.Thread.__init__(self, group=group, target=target, name=name, verbose=verbose)
         
         self._amqp_url = amqp_url
-        self._producer_id = str(uuid.uuid4())  # unique producer identifier
         self._connection = None
         self._channel = None
-        self._stopped = False # flag to stop the daemon
         
+        # flag to stop the daemon
+        self._stopped = False 
+        
+        # unique producer identifier
+        self._producer_id = str(uuid.uuid4())  
+
+        # message counters
         self._message_number = 0
         self._acked = 0
         self._nacked = 0
+        
+        # list of queues==events that have been initialized
+        self._queues = [] 
 
                 
     def _connect(self):
@@ -57,6 +65,25 @@ class RabbitmqProducerDaemon(threading.Thread):
             
             # enable delivery confirmation
             self._channel.confirm_delivery()
+            
+            # reset all queues
+            self._queues = [] 
+            
+    def _setup_queue(self, event_name):
+        '''Sets up an exchange/queue pair.'''
+        
+        if event_name not in self._queues:
+            
+            self._channel.queue_declare(queue=event_name, durable=True) # make queue persist server reboots
+            
+            # bind the exchange to the queue with a routing key equal to the queue name itself
+            self._channel.queue_bind(exchange=EXCHANGE_NAME,
+                                     queue=event_name,
+                                     routing_key=event_name) 
+            
+            self._queues.append(event_name)
+
+        
             
     
     def run(self):
@@ -82,14 +109,11 @@ class RabbitmqProducerDaemon(threading.Thread):
         
         # re-connect, if necessary
         self._connect()
+        
+        # declare the queue, if not done already
+        self._setup_queue(event_name)
                 
-        # make queue persist server reboots
-        self._channel.queue_declare(queue=event_name, durable=True)
-        
-        self._channel.queue_bind(exchange=EXCHANGE_NAME,
-                                 queue=event_name,
-                                 routing_key=event_name)
-        
+        # send the message
         self._message_number += 1
         properties = pika.BasicProperties(app_id=self._producer_id,
                                           content_type='application/json',
@@ -107,6 +131,7 @@ class RabbitmqProducerDaemon(threading.Thread):
             self._nacked += 1  # message NOT acknowledged
         
         logging.info('Published message to workflow: %s with metadata: %s, acknowledgment status=%s' % (event_name, metadata, status))
+        logging.debug('Total number of messages sent=%s, acknowledged=%s, not acknowledged=%s' % (self._message_number, self._acked, self._nacked))
         
         
     def stop(self):
