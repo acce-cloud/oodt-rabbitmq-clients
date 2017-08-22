@@ -117,6 +117,7 @@ class RabbitmqConsumer(threading.Thread):
                             
                     except (pika.exceptions.ConnectionClosed, 
                             pika.exceptions.IncompatibleProtocolError,
+                            pika.exceptions.ProbableAccessDeniedError,
                             pika.exceptions.ProbableAuthenticationError) as e:
 
                         # do nothing, wait for next attempt
