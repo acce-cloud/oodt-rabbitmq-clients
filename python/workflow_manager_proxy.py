@@ -3,13 +3,17 @@ Server proxy for the OODT Workflow Manager.
 This class intercepts XML/RPC requests sent by clients to the Workflow Manager,
 and sends them to a RabbitMQ server instead, 
 for later consumption by RabbitMQ/OODT clients.
+Examples:
+python workflow_manager_proxy.py localhost 9001
+python workflow_manager_proxy.py $HOSTNAME 9001
+python workflow_manager_proxy.py '' 9001
 '''
 
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from rabbitmq_producer_daemon import RabbitmqProducerDaemon
 import logging
 import os
-from urlparse import urlparse
+import sys
 
 
 # Set up logging
@@ -47,14 +51,15 @@ class WorkflowManagerProxy():
 
 if __name__ == "__main__":
     
-    # listen on host, port specified by $WORKFLOW_URL
-    workflow_url = urlparse( os.getenv("WORKFLOW_URL","http://localhost:9001") )
-    logging.info("Starting WorkflowManagerProxy for hostname=%s port=%s" % (workflow_url.hostname, workflow_url.port))
-    server = SimpleXMLRPCServer( (workflow_url.hostname, int(workflow_url.port)), logRequests=True, allow_none=True)
+    # listen on host, port specified by command line arguments
+    # use "localhost", "$HOSTNAME", or "" to listen on all addresses
+    hostname = sys.argv[1]
+    port = sys.argv[2]
+    logging.info("Starting WorkflowManagerProxy for hostname=%s port=%s" % (hostname, port))
+    server = SimpleXMLRPCServer( (hostname, int(port)), logRequests=True, allow_none=True)
     
     # send message to RabbitMQ server specified by $RABBITMQ_USER_URL
     rabbitmq_url = os.getenv("RABBITMQ_USER_URL","amqp://guest:guest@localhost/%2f")
-    
 
     root = ServiceRoot()
     root.workflowmgr = WorkflowManagerProxy(rabbitmq_url)
