@@ -413,7 +413,7 @@ def wait_for_queue(queue_name, delay_secs=0):
 
     while num_messages != 0:
         try:
-            resp = requests.get(url=url)
+            resp = requests.get(url=url, verify=False) # WARNING: do not verify SSL certificate
             data = json.loads(resp.text)
             num_messages = data['messages']
             num_ready_messages = data['messages_ready']
@@ -455,7 +455,7 @@ def wait_for_queues(delay_secs=0, sleep_secs=1):
 
         while num_messages != 0:
             try:
-                resp = requests.get(url=url)
+                resp = requests.get(url=url, verify=False) # WARNING: do not verify SSL certificate
                 all_data = json.loads(resp.text)
                 this_time = datetime.datetime.now()
 
