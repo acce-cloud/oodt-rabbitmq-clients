@@ -11,7 +11,7 @@ import logging
 import json
 from workflow_client import WorkflowManagerClient
 
-logging.basicConfig(level=logging.INFO,
+logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s %(filename)s %(funcName)s: %(message)s')
 
 
@@ -19,7 +19,7 @@ class RabbitmqConsumer(threading.Thread):
     '''
     RabbitMQ message consumer that "pulls" messages from the RabbitMQ message broker.
     After a message is pulled, the consumer will try to submit a workflow to the Workflow Manager:
-    if the workflow is submitted succesfully, the message is acknoledged; if not, the message is
+    if the workflow is submitted successfully, the message is acknowledged; if not, the message is
     rejected (and will be re-pulled by another RabbitmMQ consumer).
     This class will only pull a given maximum number of messages at a time, then waiting for the
     Workflow Manager load to drop below that threshold before pulling more messages.

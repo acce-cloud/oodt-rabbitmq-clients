@@ -21,6 +21,11 @@ class WorkflowManagerClient(object):
     because the Lucene index is not initialized. Therefore, this client must first submit a job,
     then start querying the workflow manager for the number of workflow instances that are running.
     '''
+    
+    # time interval in seconds before attempting to submit another workflow
+    # it allows the previous workflow to enter a 'RUNNING' state
+    TIME_INTERVAL = 5
+
 
     def __init__(self,
                  workflow_event,
@@ -81,6 +86,7 @@ class WorkflowManagerClient(object):
             logging.info("WM client: workflow %s with metadata %s succesfully submitted" % (self.workflow_event, metadata))
             self.num_running_workflow_instances += 1 # increment counter - prevents pulling too many messages from RMQ server
             self.init = True # can now query the Workflow Manager for running workflows
+            logging.info("WM client: waiting %s seconds before attempting to submit another workflow")
             return True # success
 
         # error in XML/RPC communication
