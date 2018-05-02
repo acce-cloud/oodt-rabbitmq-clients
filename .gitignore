@@ -9,6 +9,7 @@
 **/.out
 **/jobs
 **/*.pyc
+**/*.classpath
 .project
 .pydevproject
 .settings
