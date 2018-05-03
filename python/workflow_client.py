@@ -8,7 +8,12 @@ import time
 import threading
 import logging
 
-STATE_RUNNING = "PGETask_Running"
+STATE_RUNNING = "PGE EXEC"
+
+# time interval in seconds before attempting to submit another workflow
+# it allows the previous workflow to enter a 'RUNNING' state
+TIME_INTERVAL = 1
+
 
 class WorkflowManagerClient(object):
     '''
@@ -21,11 +26,6 @@ class WorkflowManagerClient(object):
     because the Lucene index is not initialized. Therefore, this client must first submit a job,
     then start querying the workflow manager for the number of workflow instances that are running.
     '''
-    
-    # time interval in seconds before attempting to submit another workflow
-    # it allows the previous workflow to enter a 'RUNNING' state
-    TIME_INTERVAL = 5
-
 
     def __init__(self,
                  workflow_event,
@@ -59,17 +59,40 @@ class WorkflowManagerClient(object):
 
             # try executing XML/RPC query to update the number of running instances
             try:
+                if logging.getLogger().isEnabledFor(logging.DEBUG):
+                    self._get_all_workflows()
+               
                 response = self.workflowManagerServerProxy.workflowmgr.getNumWorkflowInstancesByStatus(STATE_RUNNING)
                 self.num_running_workflow_instances = int(response)
-                logging.debug("Retrieved number of running workflows = %s" % self.num_running_workflow_instances)
+                logging.info("Retrieved number of RUNNING workflow instances = %s" % self.num_running_workflow_instances)
                 
             # error in XML/RPC communication
             except Exception as e:
-                logging.warn("WM Client XML/RPC Error: %s" % e)
+                logging.warn("WM Client XML/RPC Error: %s" % e)             
 
         status = (self.num_running_workflow_instances < self.max_num_running_workflow_instances)
         logging.debug("WM Client ready status = %s" % status)
         return status
+    
+    def _get_all_workflows(self):
+        '''Method to debug the status and number of all workflow instances.'''
+        
+        workflows = {}
+        workflow_instances = self.workflowManagerServerProxy.workflowmgr.getWorkflowInstances()
+        logging.debug("Retrieved number of TOTAL workflow instances = %s" % len(workflow_instances) )
+        for workflow_instance in workflow_instances:
+            wid = workflow_instance['id']
+            status = workflow_instance['status']
+            logging.debug("Workflow instance id=% status=%s" % (wid, status))
+            if workflows.get(status, None):
+                workflows[status].append(id)
+            else:
+                workflows[status] = [id]
+
+        # print out summary
+        for key, values in workflows.items():
+            logging.debug("Workflows status=%s # = %s" % (key,len(values)))
+            
 
     def submitWorkflow(self, metadata):
         '''
@@ -86,9 +109,7 @@ class WorkflowManagerClient(object):
             logging.info("WM client: workflow %s with metadata %s succesfully submitted" % (self.workflow_event, metadata))
             self.num_running_workflow_instances += 1 # increment counter - prevents pulling too many messages from RMQ server
             self.init = True # can now query the Workflow Manager for running workflows
-            logging.info("WM client: waiting %s seconds before attempting to submit another workflow" % TIME_INTERVAL)
             time.sleep(TIME_INTERVAL)
-            logging.info("WM client: done sleeping.")
             return True # success
 
         # error in XML/RPC communication
