@@ -86,7 +86,9 @@ class WorkflowManagerClient(object):
             logging.info("WM client: workflow %s with metadata %s succesfully submitted" % (self.workflow_event, metadata))
             self.num_running_workflow_instances += 1 # increment counter - prevents pulling too many messages from RMQ server
             self.init = True # can now query the Workflow Manager for running workflows
-            logging.info("WM client: waiting %s seconds before attempting to submit another workflow")
+            logging.info("WM client: waiting %s seconds before attempting to submit another workflow" % TIME_INTERVAL)
+            time.sleep(TIME_INTERVAL)
+            logging.info("WM client: done sleeping.")
             return True # success
 
         # error in XML/RPC communication
